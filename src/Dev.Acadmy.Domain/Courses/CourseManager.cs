@@ -532,6 +532,7 @@ namespace Dev.Acadmy.Courses
                     .ThenInclude(ch => ch.Lectures)
                         .ThenInclude(l => l.Quizzes)
                             .ThenInclude(q => q.Questions)
+                                .ThenInclude(qq => qq.QuestionAnswers)
                             .Include(x=>x.CourseInfos)
                 .FirstOrDefaultAsync(x => x.Id == courseId);
 
@@ -588,7 +589,11 @@ namespace Dev.Acadmy.Courses
                         VideoUrl = lecture.VideoUrl,
                         ChapterId = chapterDto.Data.Id,
                         IsVisible = lecture.IsVisible,
-                        QuizTryCount = lecture.QuizTryCount
+                        QuizTryCount = lecture.QuizTryCount,
+                        IsFree = lecture.IsFree,
+                        QuizCount=lecture.Quizzes.Count(),
+                        QuizTime=lecture.Quizzes.First().QuizTime,
+                        SuccessQuizRate=lecture.SuccessQuizRate,
                     };
                     var lecPdfs =( await _mediaItemManager.GetListAsync(lecture.Id)).Select(x=>x.Url).ToList();
                     newLecture.PdfUrls = lecPdfs;
@@ -604,7 +609,6 @@ namespace Dev.Acadmy.Courses
                             QuizTime = quiz.QuizTime,
                             QuizTryCount = quiz.QuizTryCount,
                             LectureId = lecDto.Data.Id
-                            
                         };
                         var quizDto = await _quizManger.CreateAsync(newQuiz);
                         // 🟢 6. نسخ الأسئلة (Questions)
