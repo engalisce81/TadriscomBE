@@ -29,5 +29,6 @@ namespace Dev.Acadmy.ProfileUsers
         public string AccountTypeName { get; set; }
         public int LectureCount { get; set; }
         public int ChapterCount { get; set; }
+        public bool IsStudentUniversite { get; set; }
     }
 }

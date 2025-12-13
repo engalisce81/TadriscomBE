@@ -109,7 +109,8 @@ namespace Dev.Acadmy.ProfileUsers
                 GradeLevelName = gradeLevel?.Name ?? string.Empty,
                 UniversityId = university?.Id ?? null,
                 UniversityName = university?.Name ?? string.Empty,
-                CourseJoinCount = courseJoinCount
+                CourseJoinCount = courseJoinCount,
+                IsStudentUniversite = true
             };
             return userInfo;
         }
