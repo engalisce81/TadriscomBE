@@ -50,16 +50,16 @@ namespace Dev.Acadmy.ProfileUsers
         public async Task<ResponseApi<UserInfoDto>> GetUserInfoAsync(string deviceIp)
         {
             var userInfo = await GetUserDataAsync();
-            var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
-            if (currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP) != string.Empty)
-            {
-                if (deviceIp.Trim().ToLower() != currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP).Trim().ToLower()) { throw new UserFriendlyException("this devicee not owner this email"); }
-            }
-            else
-            {
-                currentUser.SetProperty(SetPropConsts.StudentMobileIP, deviceIp);
-                await _userRepository.UpdateAsync(currentUser, autoSave: true);
-            }
+            //var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
+            //if (currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP) != string.Empty)
+            //{
+            //    if (deviceIp.Trim().ToLower() != currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP).Trim().ToLower()) { throw new UserFriendlyException("this devicee not owner this email"); }
+            //}
+            //else
+            //{
+            //    currentUser.SetProperty(SetPropConsts.StudentMobileIP, deviceIp);
+            //    await _userRepository.UpdateAsync(currentUser, autoSave: true);
+            //}
             return new ResponseApi<UserInfoDto> { Data = userInfo, Success = true, Message = "get user info success" };
         }
 
