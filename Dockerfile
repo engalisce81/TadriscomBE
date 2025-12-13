@@ -29,8 +29,19 @@ COPY src/Dev.Acadmy.HttpApi.Host/appsettings*.json .
 # انسخ ملف الشهادة داخل الحاوية
 COPY src/Dev.Acadmy.HttpApi.Host/openiddict.pfx /app/openiddict.pfx
 
+# ===============================
+# الإضافات المطلوبة (بس)
+# ===============================
 
-# اضبط متغيرات البيئة
+# خلي Kestrel يسمع على كل الشبكات
+ENV ASPNETCORE_URLS=http://+:8080
+
+# تعريف البورت للمنصة
+EXPOSE 8080
+
+# ===============================
+# متغيرات البيئة (زي ما هي)
+# ===============================
 ENV OPENIDDICT_CERT_PATH=/app/openiddict.pfx
 ENV OPENIDDICT_CERT_PASSWORD=010203
 ENV ASPNETCORE_ENVIRONMENT=Production
@@ -39,4 +50,4 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 RUN mkdir -p /app/Logs
 
 # ENTRYPOINT لتشغيل الـ Host
-ENTRYPOINT ["dotnet", "Dev.Acadmy.HttpApi.Host.dll"] 
+ENTRYPOINT ["dotnet", "Dev.Acadmy.HttpApi.Host.dll"]
