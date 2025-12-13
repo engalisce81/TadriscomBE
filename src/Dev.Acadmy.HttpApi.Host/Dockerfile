@@ -2,31 +2,17 @@
 # Stage 1: Build
 # ===============================
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# 1. انسخ ملفات الحل والمشاريع فقط أولاً (للاستفادة من كاش Docker)
-COPY ["Dev.Acadmy.sln", "."]
-COPY ["src/Dev.Acadmy.HttpApi.Host/*.csproj", "src/Dev.Acadmy.HttpApi.Host/"]
-COPY ["src/Dev.Acadmy.Application/*.csproj", "src/Dev.Acadmy.Application/"]
-COPY ["src/Dev.Acadmy.Domain/*.csproj", "src/Dev.Acadmy.Domain/"]
-COPY ["src/Dev.Acadmy.EntityFrameworkCore/*.csproj", "src/Dev.Acadmy.EntityFrameworkCore/"]
-# أضف باقي المشاريع التي يعتمد عليها الـ Host
-
-# 2. استعادة الحزم للمشاريع الأساسية
-RUN dotnet restore "Dev.Acadmy.sln"
-
-# 3. انسخ باقي كود المصدر
+# انسخ كل الملفات (solution + projects + props/targets)
 COPY . .
 
-# 4. انتقل لمجلد الـ Host وابنِ/انشر
+# Restore للسوليوشن
+RUN dotnet restore "Dev.Acadmy.sln"
+
+# Build + Publish لمشروع الـ Host
 WORKDIR /src/src/Dev.Acadmy.HttpApi.Host
-RUN dotnet build "../Dev.Acadmy.HttpApi.Host/Dev.Acadmy.HttpApi.Host.csproj" -c $BUILD_CONFIGURATION --no-restore
-RUN dotnet publish "../Dev.Acadmy.HttpApi.Host/Dev.Acadmy.HttpApi.Host.csproj" \
-    -c $BUILD_CONFIGURATION \
-    -o /app/publish \
-    --no-restore \
-    --no-build
+RUN dotnet publish "Dev.Acadmy.HttpApi.Host.csproj" -c Release -o /app/publish
 
 # ===============================
 # Stage 2: Runtime
@@ -34,11 +20,23 @@ RUN dotnet publish "../Dev.Acadmy.HttpApi.Host/Dev.Acadmy.HttpApi.Host.csproj" \
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
-# 5. انسخ فقط ملفات النشر النهائية
+# انسخ ملفات النشر فقط
 COPY --from=build /app/publish .
 
-# 6. أنشئ مجلد السجلات (لـ Serilog/أي نظام لوجات)
+# انسخ ملفات الإعدادات الخاصة بالبيئة Production
+COPY src/Dev.Acadmy.HttpApi.Host/appsettings*.json .
+
+# انسخ ملف الشهادة داخل الحاوية
+COPY src/Dev.Acadmy.HttpApi.Host/openiddict.pfx /app/openiddict.pfx
+
+
+# اضبط متغيرات البيئة
+ENV OPENIDDICT_CERT_PATH=/app/openiddict.pfx
+ENV OPENIDDICT_CERT_PASSWORD=010203
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+# تأكد من وجود مجلد Logs للـ Serilog
 RUN mkdir -p /app/Logs
 
-# 7. حدد نقطة الدخول
-ENTRYPOINT ["dotnet", "Dev.Acadmy.HttpApi.Host.dll"]
+# ENTRYPOINT لتشغيل الـ Host
+ENTRYPOINT ["dotnet", "Dev.Acadmy.HttpApi.Host.dll"] 
