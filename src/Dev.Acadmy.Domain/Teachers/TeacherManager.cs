@@ -18,6 +18,7 @@ using Dev.Acadmy.MediaItems;
 using Microsoft.EntityFrameworkCore;
 using Dev.Acadmy.Dtos.Response.Teachers;
 using Dev.Acadmy.Dtos.Response.Courses;
+using Dev.Acadmy.Courses;
 
 namespace Dev.Acadmy.Teachers
 {
@@ -34,10 +35,11 @@ namespace Dev.Acadmy.Teachers
         private readonly IRepository<Term, Guid> _termRepository;
         private readonly MediaItemManager _mediaItemManager;
         private readonly IRepository<MediaItem, Guid> _mediaItemRepsitory;
-        private readonly IRepository<Courses.Course> _courseRepository; 
-
-        public TeacherManager(IRepository<Courses.Course> courseRepository, IRepository<MediaItem, Guid> mediaItemRepsitory, MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
+        private readonly IRepository<Courses.Course> _courseRepository;
+        private readonly IRepository<CourseStudent, Guid> _courseStudentRepository;
+        public TeacherManager(IRepository<CourseStudent, Guid> courseStudentRepository, IRepository<Courses.Course> courseRepository, IRepository<MediaItem, Guid> mediaItemRepsitory, MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
         {
+            _courseStudentRepository = courseStudentRepository; 
             _courseRepository = courseRepository;
             _mediaItemRepsitory = mediaItemRepsitory;
             _mediaItemManager = mediaItemManager;
@@ -385,10 +387,11 @@ namespace Dev.Acadmy.Teachers
             var random = new Random();
 
             // 4️⃣ كورسات المدرس
-            var teacherCourses = coursesList.Select(c => new CourseInfoDto
+            var teacherCourses = coursesList.Select(c => new CourseInfoTeacherDto
             {
                 Id = c.Id,
                 CourseName = c.Name,
+                SubjectId = c.SubjectId ?? Guid.Empty,
                 SubjectName = c.Subject?.Name ?? string.Empty,
                 Price = c.Price,
                 Rating = Math.Round(c.Rating, 1),

@@ -7,7 +7,7 @@ using Volo.Abp.Application.Dtos;
 
 namespace Dev.Acadmy.Dtos.Response.Courses
 {
-    public class CourseInfoDto : EntityDto<Guid>
+    public class CourseInfoTeacherDto : EntityDto<Guid>
     {
         public string CourseName { get; set; }
         public Guid? SubjectId { get; set; }

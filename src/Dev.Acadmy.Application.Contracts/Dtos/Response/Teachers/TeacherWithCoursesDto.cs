@@ -9,7 +9,7 @@ namespace Dev.Acadmy.Dtos.Response.Teachers
     {
         public int TotalCourses { get; set; }
         public int TotalStudents { get; set; }
-        public List<CourseInfoDto> Courses { get; set; } = new List<CourseInfoDto>();
+        public List<CourseInfoTeacherDto> Courses { get; set; } = new List<CourseInfoTeacherDto>();
     }
 
 }
