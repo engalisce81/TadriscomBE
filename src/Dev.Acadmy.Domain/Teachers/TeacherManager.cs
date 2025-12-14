@@ -15,10 +15,13 @@ using Volo.Abp.Domain.Services;
 using Volo.Abp.Identity;
 using Volo.Abp.Data;
 using Dev.Acadmy.MediaItems;
+using Microsoft.EntityFrameworkCore;
+using Dev.Acadmy.Dtos.Response.Teachers;
+using Volo.Abp.Application.Services;
 
 namespace Dev.Acadmy.Teachers
 {
-    public class TeacherManager :DomainService
+    public class TeacherManager : DomainService
     {
         private readonly IIdentityUserRepository _userRepository;
         private readonly IdentityUserManager _userManager;
@@ -30,9 +33,11 @@ namespace Dev.Acadmy.Teachers
         private readonly IRepository<GradeLevel, Guid> _gradeLevelRepository;
         private readonly IRepository<Term, Guid> _termRepository;
         private readonly MediaItemManager _mediaItemManager;
+        private readonly IRepository<MediaItem, Guid> _mediaItemRepsitory;
 
-        public TeacherManager(MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
+        public TeacherManager(IRepository<MediaItem, Guid> mediaItemRepsitory, MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
         {
+            _mediaItemRepsitory = mediaItemRepsitory;
             _mediaItemManager = mediaItemManager;
             _termRepository = termRepository;
             _gradeLevelRepository = gradeLevelRepository;
@@ -61,7 +66,7 @@ namespace Dev.Acadmy.Teachers
             user.SetProperty(SetPropConsts.UniversityId, input.UniversityId);
             user.SetProperty(SetPropConsts.PhoneNumber, input.PhoneNumber);
             var currentTerm = await _termRepository.FirstOrDefaultAsync(x => x.IsActive);
-            if (currentTerm != null) user.SetProperty(SetPropConsts.TermId, currentTerm.Id);            
+            if (currentTerm != null) user.SetProperty(SetPropConsts.TermId, currentTerm.Id);
             user.SetIsActive(true);
             var result = await _userManager.CreateAsync(user, input.Password);
             if (result.Succeeded)
@@ -262,5 +267,75 @@ namespace Dev.Acadmy.Teachers
         {
             await _userRepository.DeleteAsync(id);
         }
+
+
+        public async Task<PagedResultDto<TeacherTopDto>> GetTeacherTops(
+            int pageNumber = 1,
+            int pageSize = 10,
+            string? search = null)
+        {
+            // 1️⃣ جلب كل المعلمين بالـ Role Teacher
+            var allTeachers = await _userManager.GetUsersInRoleAsync(RoleConsts.Teacher);
+
+            // 2️⃣ Apply search
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                allTeachers = allTeachers
+                    .Where(t => t.UserName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            var totalCount = allTeachers.Count;
+
+            // 3️⃣ Pagination
+            var teachersPage = allTeachers
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var teacherIds = teachersPage.Select(x => x.Id).ToList();
+
+            // 4️⃣ جلب MediaItems المرتبطة بالمعلمين
+            var mediaItems = await (await _mediaItemRepsitory.GetQueryableAsync())
+                .Where(x => teacherIds.Contains(x.RefId))
+                .ToListAsync();
+
+            var mediaDict = mediaItems
+                .GroupBy(x => x.RefId)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Url);
+
+            // 5️⃣ جلب Subjects من SetProperty
+            var subjectIds = teachersPage
+                .Select(t => t.GetProperty<Guid>(SetPropConsts.SubjectId))
+                .Where(id => id != Guid.Empty)
+                .ToList();
+
+            var subjects = await _subjectRepository.GetListAsync(s => subjectIds.Contains(s.Id));
+            var subjectsDict = subjects.ToDictionary(s => s.Id, s => s);
+
+            // 6️⃣ Projection للـ DTO مع Rating عشـوائي
+            var random = new Random();
+            var result = teachersPage.Select(t =>
+            {
+                var subjectId = t.GetProperty<Guid>("SubjectId");
+                subjectsDict.TryGetValue(subjectId, out var subject);
+
+                var rating = Math.Round(random.NextDouble() * 5, 1); // 0.0 - 5.0 عشـوائي
+
+                return new TeacherTopDto
+                {
+                    Id = t.Id,
+                    TeacherName = t.UserName,
+                    TeacherImage = mediaDict.ContainsKey(t.Id) ? mediaDict[t.Id] : null,
+                    SubjectName = subject?.Name ?? string.Empty,
+                    Rating = rating
+                };
+            }).ToList();
+
+            // 7️⃣ رجع PagedResultDto
+            return new PagedResultDto<TeacherTopDto>(totalCount, result);
+
+        }
     }
 }
+

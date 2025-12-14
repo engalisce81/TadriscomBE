@@ -1,4 +1,5 @@
-﻿using Dev.Acadmy.Permissions;
+﻿using Dev.Acadmy.Dtos.Response.Teachers;
+using Dev.Acadmy.Permissions;
 using Dev.Acadmy.Response;
 using Microsoft.AspNetCore.Authorization;
 using System;
@@ -27,6 +28,8 @@ namespace Dev.Acadmy.Teachers
         public async Task<PagedResultDto<TeacherDto>> GetTeacherListAsync(int pageNumber, int pageSize, string? search = null) => await _teacherManager.GetTeacherListAsync(pageNumber, pageSize, search);
         [Authorize(AcadmyPermissions.Teachers.View)]
         public async Task<ResponseApi<TeacherDto>> GetAsync(Guid userId) => await _teacherManager.GetAsync(userId);
+        [AllowAnonymous]
+        public async Task<PagedResultDto<TeacherTopDto>> GetTeacherTops(int pageNumber = 1,int pageSize = 10,string? search = null) => await _teacherManager.GetTeacherTops(pageNumber, pageSize, search);
 
     }
 }
