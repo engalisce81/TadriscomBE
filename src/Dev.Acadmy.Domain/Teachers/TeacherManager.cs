@@ -272,11 +272,11 @@ namespace Dev.Acadmy.Teachers
 
 
         public async Task<PagedResultDto<TeacherTopDto>> GetTeacherTops(
-     int pageNumber = 1,
-     int pageSize = 10,
-     string? search = null)
+    int pageNumber = 1,
+    int pageSize = 10,
+    string? search = null)
         {
-            // 1️⃣ جلب كل المدرسين
+            // 1️⃣ جلب المدرسين
             var allTeachers = await _userManager.GetUsersInRoleAsync(RoleConsts.Teacher);
 
             // 2️⃣ Search
@@ -288,43 +288,51 @@ namespace Dev.Acadmy.Teachers
                     .ToList();
             }
 
-            var totalCount = allTeachers.Count;
+            // IDs
+            var teacherIds = allTeachers.Select(t => t.Id).ToList();
 
-            // 3️⃣ Pagination
-            var teachersPage = allTeachers
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var teacherIds = teachersPage.Select(t => t.Id).ToList();
-
-            // 4️⃣ جلب أول كورس لكل مدرس (مع المادة)
+            // 3️⃣ جلب أول كورس لكل مدرس + المادة
             var courses = await (await _courseRepository.GetQueryableAsync())
-                .Where(c => teacherIds.Contains(c.UserId))
+                .Where(c => teacherIds.Contains(c.UserId) && c.SubjectId != null)
                 .Include(c => c.Subject)
-                .OrderBy(c => c.CreationTime) // أول كورس
+                .OrderBy(c => c.CreationTime)
                 .ToListAsync();
 
-            // Group بدل Distinct
+            // GroupBy بدل Distinct
             var firstCoursePerTeacher = courses
                 .GroupBy(c => c.UserId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            // 5️⃣ Media للمدرسين
+            // 4️⃣ فلترة المدرسين (اللي مالهمش مادة يتشالوا)
+            var filteredTeachers = allTeachers
+                .Where(t => firstCoursePerTeacher.ContainsKey(t.Id))
+                .ToList();
+
+            var totalCount = filteredTeachers.Count;
+
+            // 5️⃣ Pagination بعد الفلترة
+            var teachersPage = filteredTeachers
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var pageTeacherIds = teachersPage.Select(t => t.Id).ToList();
+
+            // 6️⃣ Media
             var mediaItems = await (await _mediaItemRepsitory.GetQueryableAsync())
-                .Where(m => teacherIds.Contains(m.RefId))
+                .Where(m => pageTeacherIds.Contains(m.RefId))
                 .ToListAsync();
 
             var mediaDict = mediaItems
                 .GroupBy(m => m.RefId)
                 .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Url);
 
-            // 6️⃣ Projection
+            // 7️⃣ Projection
             var random = new Random();
 
             var result = teachersPage.Select(t =>
             {
-                firstCoursePerTeacher.TryGetValue(t.Id, out var course);
+                var course = firstCoursePerTeacher[t.Id];
 
                 return new TeacherTopDto
                 {
@@ -333,14 +341,14 @@ namespace Dev.Acadmy.Teachers
                     TeacherImage = mediaDict.ContainsKey(t.Id)
                         ? mediaDict[t.Id]
                         : string.Empty,
-                    SubjectName = course?.Subject?.Name ?? string.Empty,
+                    SubjectName = course?.Subject?.Name?? string.Empty,
                     Rating = Math.Round(random.NextDouble() * 5, 1)
                 };
             }).ToList();
 
-            // 7️⃣ Result
             return new PagedResultDto<TeacherTopDto>(totalCount, result);
         }
+
 
 
         public async Task<ResponseApi<TeacherWithCoursesDto>> GetTeacherWithCoursesAsync(Guid teacherId)
