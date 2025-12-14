@@ -39,6 +39,6 @@ namespace Dev.Acadmy.Universites
         [Authorize]
         public async Task<PagedResultDto<LookupDto>> GetSubjectsWithCollegeListAsync()=> await _subjectManager.GetSubjectsWithCollegeListAsync();
         [AllowAnonymous]
-        public async Task<PagedResultDto<SubjectWithTeachersDto>> GetSubjectsWithTeachersAsync(int pageNumber = 1,int pageSize = 10, string? search = null) => await _subjectManager.GetSubjectsWithTeachersAsync(pageNumber, pageSize,search);
+        public async Task<PagedResultDto<SubjectWithTeachersDto>> GetSubjectsWithTeachersAsync(int pageNumber ,int pageSize , string? search, Guid gradeLevelId) => await _subjectManager.GetSubjectsWithTeachersAsync(pageNumber, pageSize,search, gradeLevelId);
     }
 }

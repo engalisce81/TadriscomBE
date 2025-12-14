@@ -94,6 +94,7 @@ namespace Dev.Acadmy.ProfileUsers
             var university = await _universityRepository.FirstOrDefaultAsync(x => x.Id == universityId);
             var gradeLevel = await _gradeLevelRepository.FirstOrDefaultAsync(x => x.Id == gradeLevelId);
             var courseJoinCount = await _courseStudentRepository.CountAsync(x=>x.UserId == currentUser.Id && x.IsSubscibe);
+            var isStudentUnvirsity = EducationTypeConsts.UNIVERSITY == university?.Name; 
             var userInfo = new UserInfoDto
             {
                 Id = currentUser.Id,
@@ -110,7 +111,7 @@ namespace Dev.Acadmy.ProfileUsers
                 UniversityId = university?.Id ?? null,
                 UniversityName = university?.Name ?? string.Empty,
                 CourseJoinCount = courseJoinCount,
-                IsStudentUniversite = true
+                IsStudentUniversite = isStudentUnvirsity,
             };
             return userInfo;
         }

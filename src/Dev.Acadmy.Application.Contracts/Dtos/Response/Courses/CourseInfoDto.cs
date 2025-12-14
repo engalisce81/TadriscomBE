@@ -10,6 +10,7 @@ namespace Dev.Acadmy.Dtos.Response.Courses
     public class CourseInfoDto : EntityDto<Guid>
     {
         public string CourseName { get; set; }
+        public Guid? SubjectId { get; set; }
         public string SubjectName { get; set; }
         public decimal Price { get; set; }
         public double Rating { get; set; }

@@ -185,18 +185,20 @@ namespace Dev.Acadmy.Universites
 
 
         public async Task<PagedResultDto<SubjectWithTeachersDto>> GetSubjectsWithTeachersAsync(
-    int pageNumber = 1,
-    int pageSize = 10,
-    string? search = null)
+    int pageNumber ,
+    int pageSize ,
+    string? search ,
+    Guid gradeLevelId )
         {
+            if(pageNumber ==0) { pageNumber = 1; pageSize = 10; }       
             // 1️⃣ جلب كل المواد
             var subjectsQuery = await _subjectRepository.GetQueryableAsync();
-
+            subjectsQuery = subjectsQuery.Where(s => s.GradeLevelId == gradeLevelId);
             // 1a️⃣ Apply search
             if (!string.IsNullOrWhiteSpace(search))
             {
                 subjectsQuery = subjectsQuery
-                    .Where(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+                    .Where(s => s.Name.Contains(search));
             }
 
             var totalCount = await subjectsQuery.CountAsync();

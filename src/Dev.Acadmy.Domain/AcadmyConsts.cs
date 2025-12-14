@@ -7,6 +7,12 @@ public static class AcadmyConsts
     public const string DbSchema = "Progres";
 }
 
+public static class EducationTypeConsts
+{
+    public const string PREUNVIRSITY = "PRE-UNVIRSITY";
+
+    public const string UNIVERSITY = "UNIVERSITY";
+}
 public static class SetPropConsts
 {
     public const string CollegeId = "CollegeId";
