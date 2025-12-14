@@ -17,7 +17,7 @@ using Volo.Abp.Data;
 using Dev.Acadmy.MediaItems;
 using Microsoft.EntityFrameworkCore;
 using Dev.Acadmy.Dtos.Response.Teachers;
-using Volo.Abp.Application.Services;
+using Dev.Acadmy.Dtos.Response.Courses;
 
 namespace Dev.Acadmy.Teachers
 {
@@ -34,9 +34,11 @@ namespace Dev.Acadmy.Teachers
         private readonly IRepository<Term, Guid> _termRepository;
         private readonly MediaItemManager _mediaItemManager;
         private readonly IRepository<MediaItem, Guid> _mediaItemRepsitory;
+        private readonly IRepository<Courses.Course> _courseRepository; 
 
-        public TeacherManager(IRepository<MediaItem, Guid> mediaItemRepsitory, MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
+        public TeacherManager(IRepository<Courses.Course> courseRepository, IRepository<MediaItem, Guid> mediaItemRepsitory, MediaItemManager mediaItemManager, IRepository<Term, Guid> termRepository, IRepository<GradeLevel, Guid> gradeLevelRepository, IRepository<University, Guid> universityRepository, IRepository<College, Guid> collegeRepository, IRepository<Subject, Guid> subjectRepository, IIdentityRoleRepository roleRepository, IIdentityUserRepository userRepository, IRepository<AccountType, Guid> accountTypeRepository, IdentityUserManager userManager)
         {
+            _courseRepository = courseRepository;
             _mediaItemRepsitory = mediaItemRepsitory;
             _mediaItemManager = mediaItemManager;
             _termRepository = termRepository;
@@ -270,18 +272,19 @@ namespace Dev.Acadmy.Teachers
 
 
         public async Task<PagedResultDto<TeacherTopDto>> GetTeacherTops(
-            int pageNumber = 1,
-            int pageSize = 10,
-            string? search = null)
+     int pageNumber = 1,
+     int pageSize = 10,
+     string? search = null)
         {
-            // 1️⃣ جلب كل المعلمين بالـ Role Teacher
+            // 1️⃣ جلب كل المدرسين
             var allTeachers = await _userManager.GetUsersInRoleAsync(RoleConsts.Teacher);
 
-            // 2️⃣ Apply search
+            // 2️⃣ Search
             if (!string.IsNullOrWhiteSpace(search))
             {
                 allTeachers = allTeachers
-                    .Where(t => t.UserName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    .Where(t => t.UserName != null &&
+                                t.UserName.Contains(search, StringComparison.OrdinalIgnoreCase))
                     .ToList();
             }
 
@@ -293,49 +296,115 @@ namespace Dev.Acadmy.Teachers
                 .Take(pageSize)
                 .ToList();
 
-            var teacherIds = teachersPage.Select(x => x.Id).ToList();
+            var teacherIds = teachersPage.Select(t => t.Id).ToList();
 
-            // 4️⃣ جلب MediaItems المرتبطة بالمعلمين
+            // 4️⃣ جلب أول كورس لكل مدرس (مع المادة)
+            var courses = await (await _courseRepository.GetQueryableAsync())
+                .Where(c => teacherIds.Contains(c.UserId))
+                .Include(c => c.Subject)
+                .OrderBy(c => c.CreationTime) // أول كورس
+                .ToListAsync();
+
+            // Group بدل Distinct
+            var firstCoursePerTeacher = courses
+                .GroupBy(c => c.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // 5️⃣ Media للمدرسين
             var mediaItems = await (await _mediaItemRepsitory.GetQueryableAsync())
-                .Where(x => teacherIds.Contains(x.RefId))
+                .Where(m => teacherIds.Contains(m.RefId))
                 .ToListAsync();
 
             var mediaDict = mediaItems
-                .GroupBy(x => x.RefId)
+                .GroupBy(m => m.RefId)
                 .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Url);
 
-            // 5️⃣ جلب Subjects من SetProperty
-            var subjectIds = teachersPage
-                .Select(t => t.GetProperty<Guid>(SetPropConsts.SubjectId))
-                .Where(id => id != Guid.Empty)
-                .ToList();
-
-            var subjects = await _subjectRepository.GetListAsync(s => subjectIds.Contains(s.Id));
-            var subjectsDict = subjects.ToDictionary(s => s.Id, s => s);
-
-            // 6️⃣ Projection للـ DTO مع Rating عشـوائي
+            // 6️⃣ Projection
             var random = new Random();
+
             var result = teachersPage.Select(t =>
             {
-                var subjectId = t.GetProperty<Guid>("SubjectId");
-                subjectsDict.TryGetValue(subjectId, out var subject);
-
-                var rating = Math.Round(random.NextDouble() * 5, 1); // 0.0 - 5.0 عشـوائي
+                firstCoursePerTeacher.TryGetValue(t.Id, out var course);
 
                 return new TeacherTopDto
                 {
                     Id = t.Id,
                     TeacherName = t.UserName,
-                    TeacherImage = mediaDict.ContainsKey(t.Id) ? mediaDict[t.Id] : null,
-                    SubjectName = subject?.Name ?? string.Empty,
-                    Rating = rating
+                    TeacherImage = mediaDict.ContainsKey(t.Id)
+                        ? mediaDict[t.Id]
+                        : string.Empty,
+                    SubjectName = course?.Subject?.Name ?? string.Empty,
+                    Rating = Math.Round(random.NextDouble() * 5, 1)
                 };
             }).ToList();
 
-            // 7️⃣ رجع PagedResultDto
+            // 7️⃣ Result
             return new PagedResultDto<TeacherTopDto>(totalCount, result);
-
         }
+
+
+        public async Task<ResponseApi<TeacherWithCoursesDto>> GetTeacherWithCoursesAsync(Guid teacherId)
+        {
+            var coursesQuery = await _courseRepository.GetQueryableAsync();
+
+            // 1️⃣ جلب كورسات المدرس فقط
+            var coursesList = await coursesQuery
+                .Where(c => c.UserId == teacherId)
+                .Include(c => c.User)
+                .Include(c => c.Subject)
+                .ToListAsync();
+
+
+            // 2️⃣ IDs
+            var courseIds = coursesList.Select(c => c.Id).ToList();
+
+            // 3️⃣ Media (مدرس + كورسات)
+            var mediaItems = await (await _mediaItemRepsitory.GetQueryableAsync())
+                .Where(m => m.RefId == teacherId || courseIds.Contains(m.RefId))
+                .ToListAsync();
+
+            var teacherImage = mediaItems
+                .Where(m => m.RefId == teacherId)
+                .Select(m => m.Url)
+                .FirstOrDefault();
+
+            var courseMediaDict = mediaItems
+                .Where(m => courseIds.Contains(m.RefId))
+                .GroupBy(m => m.RefId)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Url);
+
+            var teacher = coursesList.First().User;
+            var random = new Random();
+
+            // 4️⃣ كورسات المدرس
+            var teacherCourses = coursesList.Select(c => new CourseInfoDto
+            {
+                Id = c.Id,
+                CourseName = c.Name,
+                SubjectName = c.Subject?.Name ?? string.Empty,
+                Price = c.Price,
+                Rating = Math.Round(c.Rating, 1),
+                CourseImage = courseMediaDict.ContainsKey(c.Id)
+                    ? courseMediaDict[c.Id]
+                    : string.Empty
+            }).ToList();
+
+            // 5️⃣ DTO النهائي
+            var result = new TeacherWithCoursesDto
+            {
+                Id = teacher.Id,
+                TeacherName = teacher.Name,
+                TeacherImage = teacherImage,
+                SubjectName = string.Empty,
+                Rating = Math.Round(random.NextDouble() * 5, 1),
+                TotalCourses = teacherCourses.Count,
+                TotalStudents = 0, // اربطها بعدد الطلاب لو عندك جدول اشتراكات
+                Courses = teacherCourses
+            };
+
+            return new ResponseApi<TeacherWithCoursesDto> { Success=true , Data = result , Message ="load success"};
+           }
+
     }
 }
 
