@@ -85,10 +85,10 @@ namespace Dev.Acadmy.ProfileUsers
         {
             var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
             var media = await _mediaItemManager.GetAsync(currentUser.Id);
-            var collegeId = currentUser.GetProperty<Guid>(SetPropConsts.CollegeId);
-            var accountTypeId = currentUser.GetProperty<Guid>(SetPropConsts.AccountTypeId);
-            var universityId = currentUser.GetProperty<Guid>(SetPropConsts.UniversityId);
-            var gradeLevelId = currentUser.GetProperty<Guid>(SetPropConsts.GradeLevelId);
+            var collegeId = currentUser.GetProperty<Guid?>(SetPropConsts.CollegeId);
+            var accountTypeId = currentUser.GetProperty<Guid?>(SetPropConsts.AccountTypeId);
+            var universityId = currentUser.GetProperty<Guid?>(SetPropConsts.UniversityId);
+            var gradeLevelId = currentUser.GetProperty<Guid?>(SetPropConsts.GradeLevelId);
             var college = await _collegeRepository.FirstOrDefaultAsync(x=>x.Id == collegeId);
             var accountType = await _accountTypeRepository.FirstOrDefaultAsync(x=>x.Id ==accountTypeId);
             var university = await _universityRepository.FirstOrDefaultAsync(x => x.Id == universityId);
