@@ -28,10 +28,6 @@ namespace Dev.Acadmy.Teachers
         public async Task<PagedResultDto<TeacherDto>> GetTeacherListAsync(int pageNumber, int pageSize, string? search = null) => await _teacherManager.GetTeacherListAsync(pageNumber, pageSize, search);
         [Authorize(AcadmyPermissions.Teachers.View)]
         public async Task<ResponseApi<TeacherDto>> GetAsync(Guid userId) => await _teacherManager.GetAsync(userId);
-        [AllowAnonymous]
-        public async Task<PagedResultDto<TeacherTopDto>> GetTeacherTops(int pageNumber = 1,int pageSize = 10,string? search = null) => await _teacherManager.GetTeacherTops(pageNumber, pageSize, search);
-        [AllowAnonymous]
-        public async Task<ResponseApi<TeacherWithCoursesDto>> GetTeacherWithCoursesAsync(Guid teacherId) => await _teacherManager.GetTeacherWithCoursesAsync(teacherId);
 
     }
 }

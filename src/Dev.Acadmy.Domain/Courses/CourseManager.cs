@@ -265,49 +265,7 @@ namespace Dev.Acadmy.Courses
             }).ToList();
 
             return new PagedResultDto<CourseInfoHomeDto>(totalCount, courseDtos);
-        }
-
-        //public async Task<ResponseApi<CourseInfoHomeDto>> GetCoursesInfoAsync( Guid courseId)
-        //{
-        //    var currentUser = await  _userRepository.GetAsync(_currentUser.GetId());
-        //    var courseStudents = await (await _courseStudentRepository.GetQueryableAsync()).Where(x => x.UserId == currentUser.Id).ToListAsync();
-        //    var alreadyJoinCourses = courseStudents.Where(x => x.IsSubscibe && x.UserId == currentUser.Id).Select(x => x.CourseId).ToList();
-        //    var alreadyRequestCourses = courseStudents.Select(x => x.CourseId).ToList();
-        //    var queryable = await _courseRepository.GetQueryableAsync();
-        //    var course = await queryable.Include(c => c.User).Include(x => x.Subject).Include(x=>x.CourseInfos).Include(c => c.College).Include(c => c.Chapters).OrderByDescending(c => c.CreationTime).FirstOrDefaultAsync(x=>x.Id==courseId);
-        //    if (course == null) { throw new UserFriendlyException("Course Not Found"); }
-        //    var media = await _mediaItemManager.GetAsync(courseId);
-        //    var mediaUser = await _mediaItemManager.GetAsync(course.UserId);
-
-        //    var chapters = await GetCourseChaptersListAsync(courseId, true);
-        //    var courseDto = new CourseInfoHomeDto
-        //    {
-        //        Id = course.Id,
-        //        Name = course.Name,
-        //        Description = course.Description,
-        //        Price = course.Price,
-        //        LogoUrl = media?.Url ?? "",
-        //        UserId = course.UserId,
-        //        IsPdf=course.IsPdf,
-        //        PdfUrl=course.PdfUrl,
-        //        LectureCount=0,
-        //        UserName = course.User?.Name ?? "",
-        //        TeacherLogoUrl = mediaUser?.Url ?? "",
-        //        CollegeId = course.CollegeId,
-        //        CollegeName = course.College?.Name ?? "",
-        //        Rating=0,
-        //        AlreadyJoin = alreadyJoinCourses.Contains(course.Id),
-        //        AlreadyRequest = alreadyRequestCourses.Contains(course.Id),
-        //        SubjectId = course.Subject?.Id,
-        //        SubjectName = course.Subject?.Name ?? "",
-        //        ChapterCount = course.Chapters.Count,
-        //        DurationInWeeks = course.DurationInDays / 7,
-        //        IntroductionVideoUrl = course.IntroductionVideoUrl,
-        //        Infos = course.CourseInfos.Select(x => x.Name).ToList(),
-        //        courseChaptersDtos = chapters
-        //    };
-        //    return new ResponseApi<CourseInfoHomeDto>() { Data= courseDto ,Success=true , Message="Find Course Success"};
-        //}  
+        } 
 
         public async Task<ResponseApi<CourseInfoHomeDto>> GetCoursesInfoAsync(Guid courseId)
         {

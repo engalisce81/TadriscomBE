@@ -50,16 +50,16 @@ namespace Dev.Acadmy.ProfileUsers
         public async Task<ResponseApi<UserInfoDto>> GetUserInfoAsync(string deviceIp)
         {
             var userInfo = await GetUserDataAsync();
-            //var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
-            //if (currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP) != string.Empty)
-            //{
-            //    if (deviceIp.Trim().ToLower() != currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP).Trim().ToLower()) { throw new UserFriendlyException("this devicee not owner this email"); }
-            //}
-            //else
-            //{
-            //    currentUser.SetProperty(SetPropConsts.StudentMobileIP, deviceIp);
-            //    await _userRepository.UpdateAsync(currentUser, autoSave: true);
-            //}
+            var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
+            if (currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP) != string.Empty)
+            {
+                if (deviceIp.Trim().ToLower() != currentUser.GetProperty<string>(SetPropConsts.StudentMobileIP).Trim().ToLower()) { throw new UserFriendlyException("this devicee not owner this email"); }
+            }
+            else
+            {
+                currentUser.SetProperty(SetPropConsts.StudentMobileIP, deviceIp);
+                await _userRepository.UpdateAsync(currentUser, autoSave: true);
+            }
             return new ResponseApi<UserInfoDto> { Data = userInfo, Success = true, Message = "get user info success" };
         }
 
@@ -94,7 +94,6 @@ namespace Dev.Acadmy.ProfileUsers
             var university = await _universityRepository.FirstOrDefaultAsync(x => x.Id == universityId);
             var gradeLevel = await _gradeLevelRepository.FirstOrDefaultAsync(x => x.Id == gradeLevelId);
             var courseJoinCount = await _courseStudentRepository.CountAsync(x=>x.UserId == currentUser.Id && x.IsSubscibe);
-            var isStudentUnvirsity = EducationTypeConsts.UNIVERSITY == university?.Name; 
             var userInfo = new UserInfoDto
             {
                 Id = currentUser.Id,
@@ -111,7 +110,6 @@ namespace Dev.Acadmy.ProfileUsers
                 UniversityId = university?.Id ?? null,
                 UniversityName = university?.Name ?? string.Empty,
                 CourseJoinCount = courseJoinCount,
-                IsStudentUniversite = isStudentUnvirsity,
             };
             return userInfo;
         }

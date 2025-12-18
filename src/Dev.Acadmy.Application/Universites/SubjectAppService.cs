@@ -1,12 +1,8 @@
-﻿using Dev.Acadmy.Dtos.Response.Subjects;
-using Dev.Acadmy.LookUp;
+﻿using Dev.Acadmy.LookUp;
 using Dev.Acadmy.Permissions;
 using Dev.Acadmy.Response;
 using Microsoft.AspNetCore.Authorization;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -38,7 +34,5 @@ namespace Dev.Acadmy.Universites
         public async Task<PagedResultDto<LookupDto>> GetSubjectsWithCollegeMobListAsync(Guid collegeId, Guid? gradelevelId) => await _subjectManager.GetSubjectsWithCollegeMobListAsync(collegeId,  gradelevelId);
         [Authorize]
         public async Task<PagedResultDto<LookupDto>> GetSubjectsWithCollegeListAsync()=> await _subjectManager.GetSubjectsWithCollegeListAsync();
-        [AllowAnonymous]
-        public async Task<PagedResultDto<SubjectWithTeachersDto>> GetSubjectsWithTeachersAsync(int pageNumber ,int pageSize , string? search, Guid gradeLevelId) => await _subjectManager.GetSubjectsWithTeachersAsync(pageNumber, pageSize,search, gradeLevelId);
     }
 }
