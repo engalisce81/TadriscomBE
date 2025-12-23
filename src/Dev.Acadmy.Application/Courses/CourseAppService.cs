@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Dev.Acadmy.Entities.Courses.Entities;
 using Dev.Acadmy.Entities.Courses.Managers;
 using Dev.Acadmy.Enums;
 using Dev.Acadmy.Interfaces;
@@ -32,7 +33,9 @@ namespace Dev.Acadmy.Courses
         private readonly ICurrentUser _currentUser;
         private readonly ICourseRepository _courseRepository;
         private readonly ICourseInfoRepository _courseInfoRepository;
+        private readonly ICourseStudentRepository _courseStudentRepository;
         private readonly IdentityUserManager _userManager;
+        private readonly IIdentityUserRepository _userRepository;
         private readonly UnitOfWorkManager _unitOfWorkManager;
 
         private readonly IMediaItemRepository _mediaItemRepository;
@@ -46,7 +49,9 @@ namespace Dev.Acadmy.Courses
             ICourseInfoRepository courseInfoRepository,  
             UnitOfWorkManager unitOfWorkManager,
             ICourseRepository courseRepository,
-            IMediaItemRepository mediaItemRepository)
+            IMediaItemRepository mediaItemRepository,
+            ICourseStudentRepository courseStudentRepository,
+            IIdentityUserRepository userRepository)
         {
             _courseManager = courseManager;
             _mediaItemManager = mediaItemManager;
@@ -57,30 +62,29 @@ namespace Dev.Acadmy.Courses
             _unitOfWorkManager = unitOfWorkManager;
             _courseRepository = courseRepository;
             _mediaItemRepository = mediaItemRepository;
+            _courseStudentRepository = courseStudentRepository;
+            _userRepository = userRepository;
         }
 
         [Authorize(AcadmyPermissions.Courses.View)]
         public async Task<ResponseApi<CourseDto>> GetAsync(Guid id) => await _courseManager.GetAsync(id);
-       
+
         [Authorize(AcadmyPermissions.Courses.View)]
         public async Task<PagedResultDto<CourseDto>> GetListAsync(int pageNumber, int pageSize, string? search, CourseType type)
         {
-            var user = await _userManager.GetByIdAsync(_currentUser.GetId());
-            var roles = await _userManager.GetRolesAsync(user);
-
-            var (items, totalCount) = await _courseManager.GetListAsync((pageNumber - 1) * pageSize, pageSize, search, type, user.Id, roles.Any(r => r.ToUpper() == RoleConsts.Admin.ToUpper()));
-
+            var roles = await _userRepository.GetRoleNamesAsync(_currentUser.GetId());
+            var (items, totalCount) = await _courseManager.GetListAsync ((pageNumber - 1) * pageSize, pageSize, search,type, _currentUser.GetId(), roles.Any(r => r.ToUpper() == RoleConsts.Admin.ToUpper()));
             var courseDtos = _mapper.Map<List<CourseDto>>(items);
-
-            // جلب القاموس في طلب واحد لقاعدة البيانات (أداء عالي)
-            var mediaItemDic = await _mediaItemRepository.GetUrlDictionaryByRefIdsAsync(courseDtos.Select(c => c.Id).ToList());
-
-            // ربط الروابط بالـ DTOs من الذاكرة (Memory) بدون طلبات إضافية للداتا بيز
-            foreach (var d in courseDtos) d.LogoUrl = mediaItemDic.GetValueOrDefault(d.Id) ?? "";
-
+            var courseIds = courseDtos.Select(c => c.Id).ToList();
+            var mediaItemDic = await _mediaItemRepository.GetUrlDictionaryByRefIdsAsync(courseIds);
+            var subscriberCountsDic = await _courseStudentRepository.GetTotalSubscribersPerCourseAsync(courseIds);
+            foreach (var d in courseDtos)
+            { 
+                d.LogoUrl = mediaItemDic.GetValueOrDefault(d.Id) ?? "";
+                d.SubscriberCount = subscriberCountsDic.GetValueOrDefault(d.Id, 0);
+            }
             return new PagedResultDto<CourseDto>(totalCount, courseDtos);
         }
-
 
         [Authorize(AcadmyPermissions.Courses.Create)]
         public async Task<ResponseApi<CourseDto>> CreateAsync(CreateUpdateCourseDto input)

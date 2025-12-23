@@ -39,5 +39,20 @@ namespace Dev.Acadmy.Repositories
                 .Where(x => x.UserId == userId && !x.IsSubscibe)
                 .ToListAsync();
         }
+
+        public async Task<Dictionary<Guid, int>> GetTotalSubscribersPerCourseAsync(IEnumerable<Guid> courseIds)
+        {
+            var dbContext = await GetDbContextAsync();
+
+            return await dbContext.Set<CourseStudent>()
+                .Where(cs => courseIds.Contains(cs.CourseId)) // فلترة حسب الكورسات المطلوبة فقط
+                .GroupBy(cs => cs.CourseId)
+                .Select(group => new
+                {
+                    CourseId = group.Key,
+                    Count = group.Count()
+                })
+                .ToDictionaryAsync(x => x.CourseId, x => x.Count);
+        }
     }
 }

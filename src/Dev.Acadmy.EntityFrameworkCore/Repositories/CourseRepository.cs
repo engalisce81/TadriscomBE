@@ -67,6 +67,9 @@ namespace Dev.Acadmy.Repositories
             var items = await query.Include(x => x.College)
                                    .Include(x => x.Exams)
                                    .Include(x => x.QuestionBanks)
+                                   .Include(x => x.User)
+                                   .Include(x=>x.Chapters).ThenInclude(x=>x.Lectures)
+                                   .Include(x => x.Subject).ThenInclude(x=>x.GradeLevel)
                                    .WhereIf(!isAdmin, x => true) // كود توضيحي لو أردت إضافة شروط إضافية
                                    .OrderByDescending(x => x.CreationTime)
                                    .PageBy(skipCount, maxResultCount)
