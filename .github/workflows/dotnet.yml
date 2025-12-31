@@ -1,18 +1,35 @@
-name: Docker Image CI
+name: Build and Push ABP Docker Image to Docker Hub
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ master ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore src/Dev.Acadmy.HttpApi.Host/Dev.Acadmy.HttpApi.Host.csproj
+
+    - name: Publish project
+      run: dotnet publish src/Dev.Acadmy.HttpApi.Host/Dev.Acadmy.HttpApi.Host.csproj -c Release -o ./publish
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t engalisce81/tadriscombe:latest -f src/Dev.Acadmy.HttpApi.Host/Dockerfile .
+        docker push engalisce81/tadriscombe:latest
