@@ -31,5 +31,5 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t engalisce81/dev-acadmy-httpapi:latest -f src/Dev.Acadmy.HttpApi.Host/Dockerfile .
-        docker push engalisce81/dev-acadmy-httpapi:latest
+        docker build -t engalisce81/tadriscombe:latest -f src/Dev.Acadmy.HttpApi.Host/Dockerfile .
+        docker push engalisce81/tadriscombe:latest
