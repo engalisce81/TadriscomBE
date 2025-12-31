@@ -2,7 +2,7 @@ name: Build and Push ABP Docker Image to Docker Hub
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
