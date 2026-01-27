@@ -136,62 +136,63 @@ namespace Dev.Acadmy.Entities.Courses.Managers
         }
 
         public async Task<PagedResultDto<CourseInfoHomeDto>> GetCoursesInfoListAsync(
-            int pageNumber,
-            int pageSize,
-            string? search,
-            bool alreadyJoin,
-            Guid collegeId,
-            Guid? subjectId,
-            Guid? gradelevelId,
-            Guid? termId)
+      int pageNumber,
+      int pageSize,
+      string? search,
+      bool alreadyJoin,
+      Guid collegeId,
+      Guid? subjectId,
+      Guid? gradelevelId,
+      Guid? termId)
         {
-            var currentUser = await _userRepository.GetAsync(_currentUser.GetId());
+            var currentUserId = _currentUser.GetId();
 
             if (collegeId == Guid.Empty)
                 return new PagedResultDto<CourseInfoHomeDto>(0, new List<CourseInfoHomeDto>());
 
-            var courseStudents = await (await _courseStudentRepository.GetQueryableAsync())
-                .Where(x => x.UserId == currentUser.Id)
+            // 1. الحصول على قائمة الكورسات المرتبطة بالمستخدم أولاً
+            var studentCourseData = await (await _courseStudentRepository.GetQueryableAsync())
+                .Where(x => x.UserId == currentUserId)
+                .Select(x => new { x.CourseId, x.IsSubscibe })
                 .ToListAsync();
 
-            var alreadyJoinCourses = courseStudents
-                .Where(x => x.IsSubscibe)
-                .Select(x => x.CourseId)
-                .ToList();
+            var alreadyJoinCourses = studentCourseData.Where(x => x.IsSubscibe).Select(x => x.CourseId).ToList();
+            var alreadyRequestCourses = studentCourseData.Select(x => x.CourseId).ToList();
 
-            var alreadyRequestCourses = courseStudents
-                .Select(x => x.CourseId)
-                .ToList();
-
+            // 2. بناء الاستعلام الأساسي
             var queryable = await _courseRepository.GetQueryableAsync();
 
+            // ضروري جداً عمل Include هنا لأننا نستخدم Subject في الفلترة والـ DTO
+            queryable = queryable.Include(c => c.Subject).ThenInclude(s => s.GradeLevel);
+
+            // 3. تطبيق الفلاتر
             if (!string.IsNullOrWhiteSpace(search))
             {
-                queryable = queryable
-                    .Include(c => c.Subject)
-                        .ThenInclude(x => x.GradeLevel)
-                    .Where(c =>
-                        c.Name.Contains(search) ||
-                        c.Description.Contains(search) ||
-                        c.Subject.Name.Contains(search));
+                queryable = queryable.Where(c =>
+                    c.Name.Contains(search) ||
+                    c.Description.Contains(search) ||
+                    c.Subject.Name.Contains(search));
             }
 
-            // ✅ تعديل هنا
             if (alreadyJoin)
             {
-                // نجيب فقط الكورسات اللي الطالب مشترك فيها في أي كلية
                 queryable = queryable.Where(c => alreadyJoinCourses.Contains(c.Id));
             }
             else
             {
-                // نحافظ على الفلاتر العادية حسب الكلية والمادة والمستوى
-                queryable = queryable.Where(c =>
-                    c.CollegeId == collegeId &&
-                    (!subjectId.HasValue || c.SubjectId == subjectId.Value) &&
-                    (!termId.HasValue || c.Subject.TermId == termId.Value) &&
-                    (!gradelevelId.HasValue || c.Subject.GradeLevelId == gradelevelId.Value));
+                queryable = queryable.Where(c => c.CollegeId == collegeId);
+
+                if (subjectId.HasValue)
+                    queryable = queryable.Where(c => c.SubjectId == subjectId.Value);
+
+                if (termId.HasValue)
+                    queryable = queryable.Where(c => c.Subject.TermId == termId.Value);
+
+                if (gradelevelId.HasValue)
+                    queryable = queryable.Where(c => c.Subject.GradeLevelId == gradelevelId.Value);
             }
 
+            // 4. الحساب والجلب الفعلي (Pagination)
             var totalCount = await queryable.CountAsync();
 
             var courses = await queryable
@@ -203,19 +204,21 @@ namespace Dev.Acadmy.Entities.Courses.Managers
                 .Take(pageSize)
                 .ToListAsync();
 
-            var mediaItems = new Dictionary<Guid, MediaItem>();
-            var courseIds = courses.Select(x => x.Id);
+            // 5. جلب البيانات الخارجية (Media & Counts)
+            var courseIds = courses.Select(x => x.Id).ToList();
             var coursesCountDic = await _courseStudentRepository.GetTotalSubscribersPerCourseAsync(courseIds);
-            var mediaItemDic = await _mediaItemRepo.GetUrlDictionaryByRefIdsAsync((List<Guid>)courseIds);
+            var mediaItemDic = await _mediaItemRepo.GetUrlDictionaryByRefIdsAsync(courseIds);
+
+            // 6. Mapping
             var courseDtos = courses.Select(course => new CourseInfoHomeDto
             {
                 Id = course.Id,
-                Name = course.Name, 
-                IsPdf = course.IsPdf, 
+                Name = course.Name,
+                IsPdf = course.IsPdf,
                 PdfUrl = course.PdfUrl,
                 Description = course.Description,
                 Price = course.Price,
-                LogoUrl = mediaItemDic.TryGetValue(course.Id, out var media)? media: "",
+                LogoUrl = mediaItemDic.TryGetValue(course.Id, out var media) ? media : "",
                 SubscriberCount = coursesCountDic.TryGetValue(course.Id, out var subcount) ? subcount : 0,
                 UserId = course.UserId,
                 UserName = course.User?.Name ?? "",
@@ -225,9 +228,9 @@ namespace Dev.Acadmy.Entities.Courses.Managers
                 AlreadyRequest = alreadyRequestCourses.Contains(course.Id),
                 SubjectId = course.Subject?.Id,
                 SubjectName = course.Subject?.Name ?? "",
-                ChapterCount = course.Chapters.Count,
+                ChapterCount = course.Chapters?.Count ?? 0,
                 DurationInWeeks = course.DurationInDays / 7,
-                GradelevelId = course.Subject?.GradeLevelId ?? null,
+                GradelevelId = course.Subject?.GradeLevelId,
                 GradelevelName = course.Subject?.GradeLevel?.Name ?? string.Empty,
                 IntroductionVideoUrl = course.IntroductionVideoUrl,
                 IsQuiz = course.IsQuiz,
